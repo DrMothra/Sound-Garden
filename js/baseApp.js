@@ -45,7 +45,7 @@ BaseApp.prototype.createScene = function() {
     var ambientLight = new THREE.AmbientLight(0x383838);
     this.scene.add(ambientLight);
 
-    var directionalLight = new THREE.DirectionalLight(0xff5808);
+    var directionalLight = new THREE.DirectionalLight(0xaaaaaa);
     directionalLight.position.set(60, 60, 60);
     directionalLight.distance = 0;
     directionalLight.intensity = 0.5;
@@ -66,6 +66,7 @@ BaseApp.prototype.createCamera = function() {
 }
 
 BaseApp.prototype.createControls = function() {
+
     this.controls = new THREE.TrackballControls(this.camera, this.container);
     this.controls.rotateSpeed = 1.0;
     this.controls.zoomSpeed = 1.0;
@@ -80,6 +81,38 @@ BaseApp.prototype.createControls = function() {
     this.controls.keys = [ 65, 83, 68 ];
 
     var self = this;
+
+    //Need to lock pointer via Pointer Lock API
+    /*
+    var havePointerLock = 'pointerLockElement' in document ||
+        'mozPointerLockElement' in document ||
+        'webkitPointerLockElement' in document;
+
+    if(havePointerLock) {
+        var lockElement = document.body;
+
+        lockElement.requestPointerLock = lockElement.requestPointerLock ||
+            lockElement.mozRequestPointerLock ||
+            lockElement.webkitRequestPointerLock;
+
+        var pointerlockchange = function (event) {
+            console.log("Pointer lock change");
+        };
+        var pointerlockerror = function (event) {
+            console.log("Pointer lock error");
+        };
+
+        document.addEventListener('pointerlockchange', pointerlockchange, false);
+        document.addEventListener('pointerlockerror', pointerlockerror, false);
+
+        lockElement.requestPointerLock();
+
+        this.controls = new THREE.PointerLockControls(this.camera);
+    }
+    else {
+        alert("Pointer lock not supported");
+    }
+    */
 }
 
 BaseApp.prototype.update = function() {

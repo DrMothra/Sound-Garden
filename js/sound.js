@@ -56,7 +56,7 @@ SoundApp.prototype.createScene = function() {
 
     }
 
-    var texture = THREE.ImageUtils.loadTexture("images/autumn.jpg");
+    var texture = THREE.ImageUtils.loadTexture("images/sand_texture1013.jpg");
     var material = new THREE.MeshPhongMaterial({map : texture});
 
     var mesh = new THREE.Mesh( geometry, material);
