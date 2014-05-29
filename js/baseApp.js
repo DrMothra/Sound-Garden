@@ -36,7 +36,7 @@ BaseApp.prototype.createRenderer = function() {
     //this.renderer.setSize(1024, 768);
     //this.renderer.shadowMapEnabled = true;
     this.renderer.setSize(window.innerWidth, window.innerHeight);
-    this.container.appendChild( this.renderer.domElement );
+    document.body.appendChild( this.renderer.domElement );
 };
 
 BaseApp.prototype.createScene = function() {
@@ -50,6 +50,8 @@ BaseApp.prototype.createScene = function() {
     directionalLight.distance = 0;
     directionalLight.intensity = 0.5;
     this.scene.add(directionalLight);
+
+    this.scene.add( this.controls.getObject() );
 };
 
 BaseApp.prototype.createCamera = function() {
@@ -66,8 +68,9 @@ BaseApp.prototype.createCamera = function() {
 }
 
 BaseApp.prototype.createControls = function() {
-
-    this.controls = new THREE.TrackballControls(this.camera, this.container);
+    /*
+    //Trackball controls
+    this.controls = new THREE.TrackballControls(this.camera, this.renderer.domElement);
     this.controls.rotateSpeed = 1.0;
     this.controls.zoomSpeed = 1.0;
     this.controls.panSpeed = 1.0;
@@ -81,38 +84,51 @@ BaseApp.prototype.createControls = function() {
     this.controls.keys = [ 65, 83, 68 ];
 
     var self = this;
+    */
+    //Pointer lock controls
 
-    //Need to lock pointer via Pointer Lock API
-    /*
     var havePointerLock = 'pointerLockElement' in document ||
         'mozPointerLockElement' in document ||
         'webkitPointerLockElement' in document;
 
+    var self = this;
     if(havePointerLock) {
         var lockElement = document.body;
 
-        lockElement.requestPointerLock = lockElement.requestPointerLock ||
-            lockElement.mozRequestPointerLock ||
-            lockElement.webkitRequestPointerLock;
-
         var pointerlockchange = function (event) {
             console.log("Pointer lock change");
+            if ( document.pointerLockElement === lockElement || document.mozPointerLockElement === lockElement || document.webkitPointerLockElement === lockElement) {
+                self.controls.enabled = true;
+            } else {
+                self.controls.enabled = false;
+            }
         };
         var pointerlockerror = function (event) {
             console.log("Pointer lock error");
         };
 
         document.addEventListener('pointerlockchange', pointerlockchange, false);
+        document.addEventListener( 'mozpointerlockchange', pointerlockchange, false );
+        document.addEventListener( 'webkitpointerlockchange', pointerlockchange, false );
+
         document.addEventListener('pointerlockerror', pointerlockerror, false);
+        document.addEventListener( 'mozpointerlockerror', pointerlockerror, false );
+        document.addEventListener( 'webkitpointerlockerror', pointerlockerror, false );
 
-        lockElement.requestPointerLock();
+        //Lock screen when button pressed
+        var start = document.getElementById("start");
+        start.addEventListener( 'click', function ( event ) {
+            lockElement.requestPointerLock = lockElement.requestPointerLock || lockElement.mozRequestPointerLock || lockElement.webkitRequestPointerLock;
+            console.log("Lock element =", lockElement.requestPointerLock);
+            lockElement.requestPointerLock();
+        });
 
-        this.controls = new THREE.PointerLockControls(this.camera);
-    }
-    else {
+    } else {
         alert("Pointer lock not supported");
     }
-    */
+
+    //Create pointer lock controls
+    this.controls = new THREE.PointerLockControls(this.camera);
 }
 
 BaseApp.prototype.update = function() {

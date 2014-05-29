@@ -67,7 +67,6 @@ SoundApp.prototype.createScene = function() {
             color: 0x0000ff,
             //transparent: false,
             useScreenCoordinates: false,
-            alignment: THREE.SpriteAlignment.center,
             map: texture}
     );
 
