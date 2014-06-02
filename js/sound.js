@@ -14,11 +14,13 @@ SoundApp.prototype.init = function(container) {
     this.guiControls = null;
     this.worldWidth = 256;
     this.worldDepth = 256;
+    this.group = new THREE.Object3D();
 };
 
 SoundApp.prototype.update = function() {
     //Perform any updates
     BaseApp.prototype.update.call(this);
+    this.group.rotation.y += 0.1;
 };
 
 SoundApp.prototype.generateTerrain = function() {
@@ -47,12 +49,12 @@ SoundApp.prototype.createScene = function() {
     //Init base createsScene
     BaseApp.prototype.createScene.call(this);
     var data = this.generateTerrain();
-    var geometry = new THREE.PlaneGeometry( 7500, 7500, this.worldWidth - 1, this.worldDepth - 1 );
+    var geometry = new THREE.PlaneGeometry( 1500, 1500, this.worldWidth-1, this.worldDepth-1);
     geometry.applyMatrix( new THREE.Matrix4().makeRotationX( - Math.PI / 2 ) );
 
     for ( var i = 0; i < geometry.vertices.length; i ++ ) {
 
-        geometry.vertices[ i ].y = data[ i ] * 6;
+        geometry.vertices[ i ].y = data[ i ] * 1.25;
 
     }
 
@@ -75,12 +77,22 @@ SoundApp.prototype.createScene = function() {
     var scaleY = 100;
 
     sprite.scale.set(scaleX, scaleY, 100);
-    sprite.position.set(0, 120, 0);
+    sprite.position.set(60, 120, 0);
+
+    this.group.add(sprite);
 
     //Give sprite a name
     //sprite.name = "Sprite" + this.spritesRendered++;
 
-    this.scene.add(sprite);
+    //this.scene.add(sprite);
+
+    sprite = new THREE.Sprite(spriteMaterial);
+    sprite.scale.set(scaleX, scaleY, 100);
+    sprite.position.set(-60, 120, 0);
+
+    this.group.add(sprite);
+
+    this.scene.add(this.group);
 };
 
 SoundApp.prototype.createGUI = function() {

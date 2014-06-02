@@ -28,11 +28,13 @@ BaseApp.prototype.init = function(container) {
     //this.initMouse();
     this.createControls();
     this.projector = new THREE.Projector();
+    this.ray = new THREE.Raycaster();
+    this.ray.ray.direction.set(0, -1, 0);
 }
 
 BaseApp.prototype.createRenderer = function() {
     this.renderer = new THREE.WebGLRenderer();
-    this.renderer.setClearColorHex(0xafafaf, 1.0);
+    this.renderer.setClearColorHex(0xaf7835, 1.0);
     //this.renderer.setSize(1024, 768);
     //this.renderer.shadowMapEnabled = true;
     this.renderer.setSize(window.innerWidth, window.innerHeight);
@@ -61,8 +63,8 @@ BaseApp.prototype.createCamera = function() {
     offsetWidth = this.container.offsetWidth;
     offsetHeight = this.container.offsetHeight;
     */
-    this.camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 20000 );
-    this.camera.position.set( 0, 0, 150 );
+    this.camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 1000 );
+    this.camera.position.set( 0, 50, 150 );
 
     console.log('dom =', this.renderer.domElement);
 }
@@ -137,14 +139,32 @@ BaseApp.prototype.update = function() {
 }
 
 BaseApp.prototype.run = function(timestamp) {
+    var self = this;
     //Calculate elapsed time
     if (this.startTime === null) {
         this.startTime = timestamp;
     }
     this.elapsedTime = timestamp - this.startTime;
 
-    this.renderer.render( this.scene, this.camera );
-    var self = this;
+    //Collision detection
+    this.controls.isOnObject(false);
+    var camPos = this.controls.getObject().position;
+
+    this.ray.ray.origin.copy(camPos);
+    this.ray.ray.origin.y -= 10;
+    var intersects = this.ray.intersectObjects(this.objectList);
+    if(intersects.length > 0) {
+        console.log("Intersected");
+        var distance = intersects[0].distance;
+        if(distance > 0 && distance < 10) {
+            console.log("Cam on object");
+            this.controls.isOnObject(true);
+        }
+    } else {
+        console.log("No intersection");
+    }
+
     this.update();
+    this.renderer.render( this.scene, this.camera );
     requestAnimationFrame(function(timestamp) { self.run(timestamp); });
 }
