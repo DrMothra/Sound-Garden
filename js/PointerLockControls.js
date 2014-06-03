@@ -1,7 +1,7 @@
 /**
  * @author mrdoob / http://mrdoob.com/
  */
-
+var SPEED = 750;
 THREE.PointerLockControls = function ( camera ) {
 
 	var scope = this;
@@ -153,11 +153,11 @@ THREE.PointerLockControls = function ( camera ) {
 
 		velocity.y -= 9.8 * 100.0 * delta; // 100.0 = mass
 
-		if ( moveForward ) velocity.z -= 1600.0 * delta;
-		if ( moveBackward ) velocity.z += 400.0 * delta;
+		if ( moveForward ) velocity.z -= SPEED * delta;
+		if ( moveBackward ) velocity.z += SPEED * delta;
 
-		if ( moveLeft ) velocity.x -= 400.0 * delta;
-		if ( moveRight ) velocity.x += 400.0 * delta;
+		if ( moveLeft ) velocity.x -= SPEED * delta;
+		if ( moveRight ) velocity.x += SPEED * delta;
 
 		if ( isOnObject === true ) {
 

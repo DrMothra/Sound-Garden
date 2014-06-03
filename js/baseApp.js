@@ -154,16 +154,11 @@ BaseApp.prototype.run = function(timestamp) {
     this.ray.ray.origin.y -= 10;
     var intersects = this.ray.intersectObjects(this.objectList);
     if(intersects.length > 0) {
-        console.log("Intersected");
         var distance = intersects[0].distance;
         if(distance > 0 && distance < 10) {
-            console.log("Cam on object");
             this.controls.isOnObject(true);
         }
-    } else {
-        console.log("No intersection");
     }
-
     this.update();
     this.renderer.render( this.scene, this.camera );
     requestAnimationFrame(function(timestamp) { self.run(timestamp); });

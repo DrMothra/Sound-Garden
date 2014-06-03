@@ -14,13 +14,44 @@ SoundApp.prototype.init = function(container) {
     this.guiControls = null;
     this.worldWidth = 256;
     this.worldDepth = 256;
+    this.animate = false;
+    this.animating = false;
+    this.totalDelta = 0;
     this.group = new THREE.Object3D();
+    this.animationTime = 2;
 };
 
 SoundApp.prototype.update = function() {
     //Perform any updates
+    var delta = this.clock.getDelta();
+    if(this.animate && !this.animating) {
+        this.animating = true;
+        this.animate = false;
+        this.startRot = this.group.rotation.y;
+    }
+    if(this.animating) {
+        //DEBUG
+        //console.log("Delta =", delta);
+        this.group.rotation.y += (delta/this.animationTime) * Math.PI/3;
+        this.totalDelta += delta;
+        if(this.totalDelta >= this.animationTime) {
+            this.animating = false;
+            this.totalDelta = 0;
+            this.group.rotation.y = this.startRot + Math.PI/3;
+        }
+    }
+    //Update sounds
+    var dist = this.position.distanceTo(this.controls.getObject().position);
+    //DEBUG
+    //console.log("dist =", dist);
+    if(dist <= this.radius) {
+        this.audio.volume = this.volume * (1-dist / this.radius);
+    } else {
+        this.audio.volume = 0;
+    }
+    //console.log("Volume =", this.audio.volume);
+
     BaseApp.prototype.update.call(this);
-    this.group.rotation.y += 0.1;
 };
 
 SoundApp.prototype.generateTerrain = function() {
@@ -53,9 +84,7 @@ SoundApp.prototype.createScene = function() {
     geometry.applyMatrix( new THREE.Matrix4().makeRotationX( - Math.PI / 2 ) );
 
     for ( var i = 0; i < geometry.vertices.length; i ++ ) {
-
         geometry.vertices[ i ].y = data[ i ] * 1.25;
-
     }
 
     var texture = THREE.ImageUtils.loadTexture("images/sand_texture1013.jpg");
@@ -64,39 +93,67 @@ SoundApp.prototype.createScene = function() {
     var mesh = new THREE.Mesh( geometry, material);
     this.scene.add(mesh);
 
+    this.createCarousel("images/autumn.jpg");
+    this.createSound(['sound/soundgarden.m4a'], 200, 1);
+    this.position.set(0, 0, 0);
+    this.audio.play();
+};
+
+SoundApp.prototype.createCarousel = function(textureName) {
     //Create sprites for carousel
-    var spriteMaterial = new THREE.SpriteMaterial({
-            color: 0x0000ff,
-            //transparent: false,
-            useScreenCoordinates: false,
-            map: texture}
-    );
-
-    var sprite = new THREE.Sprite(spriteMaterial);
-    var scaleX = 100;
-    var scaleY = 100;
-
-    sprite.scale.set(scaleX, scaleY, 100);
-    sprite.position.set(60, 120, 0);
-
-    this.group.add(sprite);
-
-    //Give sprite a name
-    //sprite.name = "Sprite" + this.spritesRendered++;
-
-    //this.scene.add(sprite);
-
-    sprite = new THREE.Sprite(spriteMaterial);
-    sprite.scale.set(scaleX, scaleY, 100);
-    sprite.position.set(-60, 120, 0);
-
-    this.group.add(sprite);
+    var textureNames = ['soundgarden.jpg', 'alterbridge.jpg', 'blacksabbath.jpg', 'ledzeppelin.png', 'pearljam.jpg', 'foofighters.jpg'];
+    var spritesPerCarousel = 6;
+    var spriteHeight = 100;
+    var frontX = 0, frontZ = 100, rightX = 86.6, rightZ = 50;
+    var spritePos = [frontX, frontZ, rightX, rightZ, rightX, -rightZ, frontX, -frontZ, -rightX, -rightZ, -rightX, rightZ];
+    var scaleX = 100, scaleY = 100, scaleZ = 1;
+    for(var child= 0, pos=0; child<spritesPerCarousel; ++child, pos+=2) {
+        var texture = THREE.ImageUtils.loadTexture('images/'+textureNames[child]);
+        var spriteMaterial = new THREE.SpriteMaterial({
+                useScreenCoordinates: false,
+                map: texture}
+        );
+        var sprite = new THREE.Sprite(spriteMaterial);
+        sprite.scale.set(scaleX, scaleY, scaleZ);
+        sprite.position.set(spritePos[pos], spriteHeight, spritePos[pos+1]);
+        this.group.add(sprite);
+    }
 
     this.scene.add(this.group);
 };
 
 SoundApp.prototype.createGUI = function() {
 
+};
+
+SoundApp.prototype.createSound = function(source, radius, volume) {
+    this.audio = document.createElement('audio');
+    for(var i=0; i<source.length; ++i) {
+        var src = document.createElement('source');
+        src.src = source[i];
+        this.audio.appendChild(src);
+    }
+    this.position = new THREE.Vector3();
+    this.radius = radius;
+    this.volume = volume;
+};
+
+SoundApp.prototype.onKeyDown = function(event) {
+    //console.log("Key pressed", event.keyCode);
+    switch (event.keyCode) {
+        case 67:
+            this.animate = true;
+            break;
+    }
+};
+
+SoundApp.prototype.onKeyUp = function(event) {
+    //console.log("Key up", event.keyCode);
+    switch (event.keyCode) {
+        case 67:
+            //this.animate = false;
+            break;
+    }
 };
 
 //Only executed our code once the DOM is ready.
@@ -106,6 +163,13 @@ $(document).ready(function() {
     var container = document.getElementById("WebGL-output");
     var app = new SoundApp();
     app.init(container);
+    //Keyboard callback
+    $(document).keydown(function(event) {
+        app.onKeyDown(event);
+    });
+    $(document).keyup(function(event) {
+        app.onKeyUp(event);
+    });
     app.createScene();
     app.createGUI();
     app.run();
