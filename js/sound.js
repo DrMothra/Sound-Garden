@@ -2,6 +2,38 @@
  * Created by DrTone on 28/05/2014.
  */
 
+//Audio playback
+var Sound = function(source, pos, radius, volume) {
+    var audio = document.createElement('audio');
+    for(var i=0; i<source.length; ++i) {
+        var src = document.createElement('source');
+        src.src = source[i];
+        audio.appendChild(src);
+    }
+    var audioPosition = new THREE.Vector3(pos.x, pos.y, pos.z);
+    var audioRadius = radius;
+    var audioVolume = volume;
+    //var main = this;
+
+    return {
+        play: function() {
+            audio.play();
+        },
+        setVolume: function(volume) {
+            audioVolume = volume;
+        },
+        getPosition: function() {
+            return audioPosition;
+        },
+        getRadius: function() {
+            return audioRadius;
+        },
+        getVolume: function() {
+            return audioVolume;
+        }
+    };
+};
+
 //Init this app
 function SoundApp() {
     BaseApp.call(this);
@@ -41,14 +73,16 @@ SoundApp.prototype.update = function() {
         }
     }
     //Update sounds
-    var dist = this.position.distanceTo(this.controls.getObject().position);
+    //var dist = this.audioPosition.distanceTo(this.controls.getObject().position);
+    var dist = this.audio.getPosition().distanceTo(this.controls.getObject().position);
     //DEBUG
     //console.log("dist =", dist);
-    if(dist <= this.radius) {
-        this.audio.volume = this.volume * (1-dist / this.radius);
+    if(dist <= this.audio.getRadius()) {
+        this.audio.setVolume(this.audio.getVolume() * (1-dist / this.audio.getRadius()));
     } else {
-        this.audio.volume = 0;
+        this.audio.setVolume(0);
     }
+    //DEBUG
     //console.log("Volume =", this.audio.volume);
 
     BaseApp.prototype.update.call(this);
@@ -94,8 +128,8 @@ SoundApp.prototype.createScene = function() {
     this.scene.add(mesh);
 
     this.createCarousel("images/autumn.jpg");
-    this.createSound(['sound/soundgarden.m4a'], 200, 1);
-    this.position.set(0, 0, 0);
+    var pos = new THREE.Vector3(0, 0, -450);
+    this.audio = new Sound(['sound/soundgarden.m4a'], pos, 200, 1);
     this.audio.play();
 };
 
@@ -119,6 +153,7 @@ SoundApp.prototype.createCarousel = function(textureName) {
         this.group.add(sprite);
     }
 
+    this.group.position.set(0, 0, -450);
     this.scene.add(this.group);
 };
 
@@ -126,23 +161,28 @@ SoundApp.prototype.createGUI = function() {
 
 };
 
-SoundApp.prototype.createSound = function(source, radius, volume) {
+/*
+SoundApp.prototype.createAudio = function(source, radius, volume) {
     this.audio = document.createElement('audio');
     for(var i=0; i<source.length; ++i) {
         var src = document.createElement('source');
         src.src = source[i];
         this.audio.appendChild(src);
     }
-    this.position = new THREE.Vector3();
-    this.radius = radius;
-    this.volume = volume;
+    this.audioPosition = new THREE.Vector3();
+    this.audioRadius = radius;
+    this.audioVolume = volume;
 };
+*/
 
 SoundApp.prototype.onKeyDown = function(event) {
     //console.log("Key pressed", event.keyCode);
     switch (event.keyCode) {
         case 67:
             this.animate = true;
+            break;
+        case 80:
+            console.log("CamPos=", this.controls.getObject().position);
             break;
     }
 };
