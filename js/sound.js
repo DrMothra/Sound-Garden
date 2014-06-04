@@ -13,14 +13,13 @@ var Sound = function(source, pos, radius, volume) {
     var audioPosition = new THREE.Vector3(pos.x, pos.y, pos.z);
     var audioRadius = radius;
     var audioVolume = volume;
-    //var main = this;
 
     return {
         play: function() {
             audio.play();
         },
         setVolume: function(volume) {
-            audioVolume = volume;
+            audio.volume = volume;
         },
         getPosition: function() {
             return audioPosition;
@@ -74,13 +73,13 @@ SoundApp.prototype.update = function() {
     }
     //Update sounds
     //var dist = this.audioPosition.distanceTo(this.controls.getObject().position);
-    var dist = this.audio.getPosition().distanceTo(this.controls.getObject().position);
+    var dist = this.audioObjects[this.audioTrack].getPosition().distanceTo(this.controls.getObject().position);
     //DEBUG
     //console.log("dist =", dist);
-    if(dist <= this.audio.getRadius()) {
-        this.audio.setVolume(this.audio.getVolume() * (1-dist / this.audio.getRadius()));
+    if(dist <= this.audioObjects[this.audioTrack].getRadius()) {
+        this.audioObjects[this.audioTrack].setVolume(this.audioObjects[this.audioTrack].getVolume() * (1-dist / this.audioObjects[this.audioTrack].getRadius()));
     } else {
-        this.audio.setVolume(0);
+        this.audioObjects[this.audioTrack].setVolume(0);
     }
     //DEBUG
     //console.log("Volume =", this.audio.volume);
@@ -114,23 +113,26 @@ SoundApp.prototype.createScene = function() {
     //Init base createsScene
     BaseApp.prototype.createScene.call(this);
     var data = this.generateTerrain();
-    var geometry = new THREE.PlaneGeometry( 1500, 1500, this.worldWidth-1, this.worldDepth-1);
-    geometry.applyMatrix( new THREE.Matrix4().makeRotationX( - Math.PI / 2 ) );
+    var geometry = new THREE.PlaneGeometry(1500, 1500, this.worldWidth - 1, this.worldDepth - 1);
+    geometry.applyMatrix(new THREE.Matrix4().makeRotationX(-Math.PI / 2));
 
-    for ( var i = 0; i < geometry.vertices.length; i ++ ) {
+    for (var i = 0; i < geometry.vertices.length; i++) {
         geometry.vertices[ i ].y = data[ i ] * 1.25;
     }
 
     var texture = THREE.ImageUtils.loadTexture("images/sand_texture1013.jpg");
-    var material = new THREE.MeshPhongMaterial({map : texture});
+    var material = new THREE.MeshPhongMaterial({map: texture});
 
-    var mesh = new THREE.Mesh( geometry, material);
+    var mesh = new THREE.Mesh(geometry, material);
     this.scene.add(mesh);
 
     this.createCarousel("images/autumn.jpg");
-    var pos = new THREE.Vector3(0, 0, -450);
-    this.audio = new Sound(['sound/soundgarden.m4a'], pos, 200, 1);
-    this.audio.play();
+    var pos = this.group.position;
+    this.audioTrack = 1;
+    this.audioObjects = [];
+    this.audioObjects.push(new Sound(['sound/soundgarden.m4a'], pos, 200, 1));
+    this.audioObjects.push(new Sound(['sound/alterbridge.mp3'], pos, 200, 1));
+    this.audioObjects[this.audioTrack].play();
 };
 
 SoundApp.prototype.createCarousel = function(textureName) {
@@ -148,6 +150,8 @@ SoundApp.prototype.createCarousel = function(textureName) {
                 map: texture}
         );
         var sprite = new THREE.Sprite(spriteMaterial);
+        //Give sprite name
+        sprite.name = 'sprite'+ child;
         sprite.scale.set(scaleX, scaleY, scaleZ);
         sprite.position.set(spritePos[pos], spriteHeight, spritePos[pos+1]);
         this.group.add(sprite);
@@ -204,10 +208,10 @@ $(document).ready(function() {
     var app = new SoundApp();
     app.init(container);
     //Keyboard callback
-    $(document).keydown(function(event) {
+    $(document).keydown(function (event) {
         app.onKeyDown(event);
     });
-    $(document).keyup(function(event) {
+    $(document).keyup(function (event) {
         app.onKeyUp(event);
     });
     app.createScene();
