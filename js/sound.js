@@ -33,6 +33,22 @@ var Sound = function(source, pos, radius, volume) {
     };
 };
 
+function getNearestTrack(pos, group) {
+    //Traverse group and check all children
+    var smallest = 1000000;
+    var nearestTrack = -1;
+    for(var child=0; child<group.children.length; ++child) {
+        var track = group.children[child];
+        var dist = pos.distanceTo(track.position);
+        if(dist < smallest) {
+            nearestTrack = child;
+            smallest = dist;
+        }
+    }
+
+    return nearestTrack;
+}
+
 //Init this app
 function SoundApp() {
     BaseApp.call(this);
@@ -72,14 +88,14 @@ SoundApp.prototype.update = function() {
         }
     }
     //Update sounds
-    //var dist = this.audioPosition.distanceTo(this.controls.getObject().position);
-    var dist = this.audioObjects[this.audioTrack].getPosition().distanceTo(this.controls.getObject().position);
-    //DEBUG
-    //console.log("dist =", dist);
-    if(dist <= this.audioObjects[this.audioTrack].getRadius()) {
-        this.audioObjects[this.audioTrack].setVolume(this.audioObjects[this.audioTrack].getVolume() * (1-dist / this.audioObjects[this.audioTrack].getRadius()));
+    var camPos = this.controls.getObject().position;
+    var track = this.audioObjects[this.audioTrack];
+    var dist = track.getPosition().distanceTo(camPos);
+    if(dist <= track.getRadius()) {
+        track.setVolume(track.getVolume() * (1-dist / track.getRadius()));
+        console.log("Nearest =", getNearestTrack(camPos, this.group));
     } else {
-        this.audioObjects[this.audioTrack].setVolume(0);
+        track.setVolume(0);
     }
     //DEBUG
     //console.log("Volume =", this.audio.volume);
@@ -130,8 +146,8 @@ SoundApp.prototype.createScene = function() {
     var pos = this.group.position;
     this.audioTrack = 1;
     this.audioObjects = [];
-    this.audioObjects.push(new Sound(['sound/soundgarden.m4a'], pos, 200, 1));
-    this.audioObjects.push(new Sound(['sound/alterbridge.mp3'], pos, 200, 1));
+    this.audioObjects.push(new Sound(['sound/soundgarden.m4a'], pos, 300, 1));
+    this.audioObjects.push(new Sound(['sound/alterbridge.mp3'], pos, 300, 1));
     this.audioObjects[this.audioTrack].play();
 };
 
@@ -157,7 +173,7 @@ SoundApp.prototype.createCarousel = function(textureName) {
         this.group.add(sprite);
     }
 
-    this.group.position.set(0, 0, -450);
+    this.group.position.set(450, 0, -450);
     this.scene.add(this.group);
 };
 

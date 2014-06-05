@@ -98,11 +98,13 @@ BaseApp.prototype.createControls = function() {
         var lockElement = document.body;
 
         var pointerlockchange = function (event) {
-            console.log("Pointer lock change");
+            //DEBUG
+            //console.log("Pointer lock change");
             if ( document.pointerLockElement === lockElement || document.mozPointerLockElement === lockElement || document.webkitPointerLockElement === lockElement) {
                 self.controls.enabled = true;
             } else {
                 self.controls.enabled = false;
+                document.getElementById("start").style.display = '';
             }
         };
         var pointerlockerror = function (event) {
@@ -120,6 +122,7 @@ BaseApp.prototype.createControls = function() {
         //Lock screen when button pressed
         var start = document.getElementById("start");
         start.addEventListener( 'click', function ( event ) {
+            start.style.display = 'none';
             lockElement.requestPointerLock = lockElement.requestPointerLock || lockElement.mozRequestPointerLock || lockElement.webkitRequestPointerLock;
             console.log("Lock element =", lockElement.requestPointerLock);
             lockElement.requestPointerLock();

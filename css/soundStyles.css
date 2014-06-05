@@ -8,12 +8,15 @@ body {
     height: 100%;
 }
 
-#start {
-    position: fixed;
-    top: 50px;
-    right: 50px;
-    width: 100px;
-    height: 60px;
+.instructions {
+    position: absolute;
+    border-radius: 5px;
+    padding: 5px;
+    top: 35%;
+    left: 35%;
     text-align: center;
-    background-color: #afafaf;
+    font-size: 40px;
+    background-color: rgba(102, 153, 245, 0.5);
+    color: #ffffff;
+    cursor: pointer;
 }
