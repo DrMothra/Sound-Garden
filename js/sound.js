@@ -5,11 +5,10 @@
 //Audio playback
 var Sound = function(source, pos, radius, volume) {
     var audio = document.createElement('audio');
-    for(var i=0; i<source.length; ++i) {
-        var src = document.createElement('source');
-        src.src = source[i];
-        audio.appendChild(src);
-    }
+    var src = document.createElement('source');
+    src.src = source;
+    audio.appendChild(src);
+
     var audioPosition = new THREE.Vector3(pos.x, pos.y, pos.z);
     var audioRadius = radius;
     var audioVolume = volume;
@@ -17,6 +16,9 @@ var Sound = function(source, pos, radius, volume) {
     return {
         play: function() {
             audio.play();
+        },
+        pause: function() {
+            audio.pause();
         },
         setVolume: function(volume) {
             audio.volume = volume;
@@ -37,9 +39,12 @@ function getNearestTrack(pos, group) {
     //Traverse group and check all children
     var smallest = 1000000;
     var nearestTrack = -1;
+    var temp = new THREE.Vector3(0,0,0);
     for(var child=0; child<group.children.length; ++child) {
-        var track = group.children[child];
-        var dist = pos.distanceTo(track.position);
+        var trackPos = group.children[child].position;
+        temp.copy(trackPos);
+        temp = group.localToWorld(temp);
+        var dist = pos.distanceTo(temp);
         if(dist < smallest) {
             nearestTrack = child;
             smallest = dist;
@@ -66,6 +71,7 @@ SoundApp.prototype.init = function(container) {
     this.totalDelta = 0;
     this.group = new THREE.Object3D();
     this.animationTime = 2;
+    this.audioTrack = 0;
 };
 
 SoundApp.prototype.update = function() {
@@ -87,15 +93,19 @@ SoundApp.prototype.update = function() {
             this.group.rotation.y = this.startRot + Math.PI/3;
         }
     }
-    //Update sounds
+    //Play music when user nearby
+    var currentTrack = this.audioObjects[this.audioTrack];
     var camPos = this.controls.getObject().position;
-    var track = this.audioObjects[this.audioTrack];
-    var dist = track.getPosition().distanceTo(camPos);
-    if(dist <= track.getRadius()) {
-        track.setVolume(track.getVolume() * (1-dist / track.getRadius()));
-        console.log("Nearest =", getNearestTrack(camPos, this.group));
+    var dist = this.group.position.distanceTo(camPos);
+    if(dist <= this.group.audioRadius) {
+        var track = getNearestTrack(camPos, this.group);
+        currentTrack.pause();
+        this.audioTrack = track;
+        currentTrack = this.audioObjects[this.audioTrack];
+        currentTrack.play();
+        currentTrack.setVolume(currentTrack.getVolume() * (1-dist / currentTrack.getRadius()));
     } else {
-        track.setVolume(0);
+        currentTrack.setVolume(0);
     }
     //DEBUG
     //console.log("Volume =", this.audio.volume);
@@ -144,10 +154,13 @@ SoundApp.prototype.createScene = function() {
 
     this.createCarousel("images/autumn.jpg");
     var pos = this.group.position;
-    this.audioTrack = 1;
+    var radius = 300;
     this.audioObjects = [];
-    this.audioObjects.push(new Sound(['sound/soundgarden.m4a'], pos, 300, 1));
-    this.audioObjects.push(new Sound(['sound/alterbridge.mp3'], pos, 300, 1));
+    var tracks = ['sound/soundgarden.m4a', 'sound/alterbridge.mp3', 'sound/blacksabbath.m4a', 'sound/ledzeppelin.m4a', 'sound/pearljam.m4a', 'sound/foofighters.m4a'];
+    for(var track=0; track<6; ++track) {
+        this.audioObjects.push(new Sound(tracks[track], pos, radius, 1));
+    }
+    this.group.audioRadius = radius;
     this.audioObjects[this.audioTrack].play();
 };
 
