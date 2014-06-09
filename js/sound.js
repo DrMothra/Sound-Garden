@@ -8,6 +8,8 @@ var Sound = function(source, pos, radius, volume) {
     var src = document.createElement('source');
     src.src = source;
     audio.appendChild(src);
+    //Always loop audio
+    audio.loop = true;
 
     var audioPosition = new THREE.Vector3(pos.x, pos.y, pos.z);
     var audioRadius = radius;
@@ -70,7 +72,7 @@ SoundApp.prototype.init = function(container) {
     this.animating = false;
     this.totalDelta = 0;
     this.carousels = [];
-    this.currentCar = 0;
+    this.currentCar = -1;
     this.animationTime = 2;
     this.audioTrack = 0;
 };
@@ -78,6 +80,37 @@ SoundApp.prototype.init = function(container) {
 SoundApp.prototype.update = function() {
     //Perform any updates
     var delta = this.clock.getDelta();
+
+    //Play music when user nearby
+    var camPos = this.controls.getObject().position;
+    for(var car=0; car<this.carousels.length; ++car) {
+        var dist = this.carousels[car].position.distanceTo(camPos);
+        var currentTrack = null, currentCar = null;
+        if(dist <= this.audioRadius) {
+            this.currentCar = car;
+            currentCar = this.carousels[this.currentCar];
+            var track = getNearestTrack(camPos, this.carousels[car]);
+            if(car != this.currentCar || track != currentCar.currentTrack) {
+                if(currentCar.currentTrack >= 0){
+                    currentTrack = currentCar.audioObjects[currentCar.currentTrack];
+                    currentTrack.pause();
+                }
+                currentCar.currentTrack = track;
+                currentTrack = currentCar.audioObjects[currentCar.currentTrack];
+                currentTrack.play();
+            }
+            currentTrack.setVolume(currentTrack.getVolume() * (1-dist / currentTrack.getRadius()));
+
+            break;
+        } else {
+            if(currentCar && currentCar.currentTrack >= 0){
+                currentTrack = currentCar.audioObjects[currentCar.currentTrack];
+                currentTrack.setVolume(0);
+            }
+        }
+    }
+
+    //Only animate carousel when nearby
     if(this.animate && !this.animating) {
         this.animating = true;
         this.animate = false;
@@ -86,30 +119,12 @@ SoundApp.prototype.update = function() {
     if(this.animating) {
         //DEBUG
         //console.log("Delta =", delta);
-        this.carousels[this.currentCar].rotation.y += (delta/this.animationTime) * Math.PI/3;
+        this.carousels[this.currentCar].rotation.y += (delta/this.animationTime) * this.rotInc;
         this.totalDelta += delta;
         if(this.totalDelta >= this.animationTime) {
             this.animating = false;
             this.totalDelta = 0;
-            this.carousels[this.currentCar].rotation.y = this.startRot + Math.PI/3;
-        }
-    }
-    //Play music when user nearby
-    var currentTrack = this.audioObjects[this.audioTrack];
-    var camPos = this.controls.getObject().position;
-    for(var car=0; car<this.carousels.length; ++car) {
-        var dist = this.carousels[car].position.distanceTo(camPos);
-        if(dist <= this.audioRadius) {
-            this.currentCar = car;
-            var track = getNearestTrack(camPos, this.carousels[car]);
-            currentTrack.pause();
-            this.audioTrack = track;
-            currentTrack = this.audioObjects[this.audioTrack];
-            currentTrack.play();
-            currentTrack.setVolume(currentTrack.getVolume() * (1-dist / currentTrack.getRadius()));
-            break;
-        } else {
-            currentTrack.setVolume(0);
+            this.carousels[this.currentCar].rotation.y = this.startRot + this.rotInc;
         }
     }
 
@@ -159,24 +174,20 @@ SoundApp.prototype.createScene = function() {
     this.scene.add(mesh);
 
     //Create audio carousels
+    this.audioRadius = 300;
     //Rock carousel
     var images = ['soundgarden.jpg', 'alterbridge.jpg', 'blacksabbath.jpg', 'ledzeppelin.png', 'pearljam.jpg', 'foofighters.jpg'];
-    var pos = new THREE.Vector3(450, 0, -450);
-    this.createCarousel('rock', pos, images);
+    var tracks = ['soundgarden.m4a', 'alterbridge.mp3', 'blacksabbath.m4a', 'ledzeppelin.m4a', 'pearljam.m4a', 'foofighters.m4a'];
+    var pos = new THREE.Vector3(600, 0, -600);
+    this.createCarousel('rock', pos, images, tracks);
+
     images = ['mozart.jpg', 'beethoven.jpg', 'vivaldi.jpg', 'barber.jpg', 'chopin.jpg', 'bach.jpg'];
-    pos.set(-450, 0, -450);
-    this.createCarousel('classical', pos, images);
-    var radius = 300;
-    this.audioObjects = [];
-    var tracks = ['sound/soundgarden.m4a', 'sound/alterbridge.mp3', 'sound/blacksabbath.m4a', 'sound/ledzeppelin.m4a', 'sound/pearljam.m4a', 'sound/foofighters.m4a'];
-    for(var track=0; track<6; ++track) {
-        this.audioObjects.push(new Sound(tracks[track], pos, radius, 1));
-    }
-    this.audioRadius = radius;
-    this.audioObjects[this.audioTrack].play();
+    tracks = ['mozart.mp3', 'beethoven.ogg', 'vivaldi.ogg', 'barber.ogg', 'chopin.ogg', 'bach.ogg'];
+    pos.set(-600, 0, -600);
+    this.createCarousel('classical', pos, images, tracks);
 };
 
-SoundApp.prototype.createCarousel = function(name, pos, tracks) {
+SoundApp.prototype.createCarousel = function(name, pos, images, tracks) {
     //Create group for carousel
     var group = new THREE.Object3D();
     group.name = name;
@@ -185,8 +196,8 @@ SoundApp.prototype.createCarousel = function(name, pos, tracks) {
     var frontX = 0, frontZ = 100, rightX = 86.6, rightZ = 50;
     var spritePos = [frontX, frontZ, rightX, rightZ, rightX, -rightZ, frontX, -frontZ, -rightX, -rightZ, -rightX, rightZ];
     var scaleX = 100, scaleY = 100, scaleZ = 1;
-    for(var child= 0, posIndex=0; child<tracks.length; ++child, posIndex+=2) {
-        var texture = THREE.ImageUtils.loadTexture('images/'+tracks[child]);
+    for(var child= 0, posIndex=0; child<images.length; ++child, posIndex+=2) {
+        var texture = THREE.ImageUtils.loadTexture('images/'+images[child]);
         var spriteMaterial = new THREE.SpriteMaterial({
                 useScreenCoordinates: false,
                 map: texture}
@@ -200,6 +211,16 @@ SoundApp.prototype.createCarousel = function(name, pos, tracks) {
     }
 
     group.position.set(pos.x, pos.y, pos.z);
+
+    //Add audio tracks
+    var audioObjects = [];
+    for(var track=0; track<tracks.length; ++track) {
+        audioObjects.push(new Sound('sound/'+tracks[track], pos, this.audioRadius, 1));
+    }
+    //audioObjects[0].play();
+    //audioObjects[0].setVolume(0);
+    group.audioObjects = audioObjects;
+    group.currentTrack = -1;
     this.carousels.push(group);
     this.scene.add(group);
 };
@@ -223,13 +244,19 @@ SoundApp.prototype.createAudio = function(source, radius, volume) {
 */
 
 SoundApp.prototype.onKeyDown = function(event) {
+    //DEBUG
     //console.log("Key pressed", event.keyCode);
     switch (event.keyCode) {
         case 67:
             this.animate = true;
+            this.rotInc = Math.PI/3;
             break;
         case 80:
             console.log("CamPos=", this.controls.getObject().position);
+            break;
+        case 90:
+            this.animate = true;
+            this.rotInc = -Math.PI/3;
             break;
     }
 };
