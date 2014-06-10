@@ -5,9 +5,42 @@
 //Audio playback
 var Sound = function(source, pos, radius, volume) {
     var audio = document.createElement('audio');
+
     var src = document.createElement('source');
+    audio.addEventListener('error', function(e) {
+        alert('Audio error');
+        console.log(e);
+    }, false);
+
+    //Get file extension
+    var fileExt = null;
+    var ext = source.indexOf('.');
+    if(ext >= 0) {
+        var start = ext+1;
+        fileExt = source.substr(start, source.length-start);
+    }
+    if(!fileExt) {
+        alert("Couldn't load sound file!");
+        return;
+    }
+    var audioType = 'audio/';
+    switch (fileExt) {
+        case 'mp3':
+            audioType += 'mp3';
+            break;
+        case 'm4a':
+            audioType += 'mp4';
+            break;
+        case 'ogg':
+        case 'oga':
+            audioType += 'ogg';
+            break;
+    }
 
     src.src = source;
+    src.type = audioType;
+    //src.preload = 'none';
+
     audio.appendChild(src);
     //Always loop audio
     audio.loop = true;
@@ -103,12 +136,15 @@ SoundApp.prototype.update = function() {
                 currentTrack.play();
 
                 //DEBUG
-                console.log('Track playing = ', track);
+                console.log('Track = ', track, ' car =', this.carouselNum);
             }
             if(currentTrack) {
                 var volume = currentTrack.getVolume() * (1-dist / currentTrack.getRadius());
                 currentTrack.setVolume(volume);
-                console.log('Volume =', volume);
+                //DEBUG
+                //console.log('Volume =', volume);
+            } else {
+                console.log('No track');
             }
             break;
         } else {
@@ -143,6 +179,11 @@ SoundApp.prototype.update = function() {
     //DEBUG
     //console.log("Volume =", this.audio.volume);
 
+    var pitch = this.controls.getObject();
+    this.cameraCube.rotation.copy( this.controls.getObject().rotation );
+    this.cameraCube.rotation.x = pitch.children[0].rotation.x;
+    //console.log('Pitch=', pitch.children[0].rotation);
+    this.renderer.render(this.sceneCube, this.cameraCube);
     BaseApp.prototype.update.call(this);
 };
 
@@ -185,18 +226,43 @@ SoundApp.prototype.createScene = function() {
     var mesh = new THREE.Mesh(geometry, material);
     this.scene.add(mesh);
 
+    //Skybox
+    this.cameraCube = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 1000 );
+
+    this.sceneCube = new THREE.Scene();
+    var r = "textures/cube/";
+    var urls = [ r + "px.jpg", r + "nx.jpg",
+            r + "py.jpg", r + "ny.jpg",
+            r + "pz.jpg", r + "nz.jpg" ];
+
+    var textureCube = THREE.ImageUtils.loadTextureCube( urls );
+    textureCube.format = THREE.RGBFormat;
+
+    var shader = THREE.ShaderLib[ "cube" ];
+    shader.uniforms[ "tCube" ].value = textureCube;
+
+    var skyMaterial = new THREE.ShaderMaterial( {
+
+            fragmentShader: shader.fragmentShader,
+            vertexShader: shader.vertexShader,
+            uniforms: shader.uniforms,
+            depthWrite: false,
+            side: THREE.BackSide
+    });
+
+    var skyMesh = new THREE.Mesh( new THREE.BoxGeometry( 1000, 1000, 1000 ), skyMaterial );
+    this.sceneCube.add( skyMesh );
+
     //Create audio carousels
     this.audioRadius = 300;
     //Rock carousel
-    /*
     var images = ['soundgarden.jpg', 'alterbridge.jpg', 'blacksabbath.jpg', 'ledzeppelin.png', 'pearljam.jpg', 'foofighters.jpg'];
-    var tracks = ['soundgarden.m4a', 'alterbridge.mp3', 'blacksabbath.m4a', 'ledzeppelin.m4a', 'pearljam.m4a', 'foofighters.m4a'];
-    */
+    var tracks = ['soundgardenCut.mp3', 'alterbridgeCut.mp3', 'blacksabbathCut.mp3', 'ledzeppelinCut.mp3', 'pearljamCut.mp3', 'foofightersCut.mp3'];
     var pos = new THREE.Vector3(600, 0, -600);
-    //this.createCarousel('rock', pos, images, tracks);
+    this.createCarousel('rock', pos, images, tracks);
 
-    var images = ['mozart.jpg', 'beethoven.jpg', 'vivaldi.jpg', 'barber.jpg', 'chopin.jpg', 'bach.jpg'];
-    var tracks = ['mozart.mp3', 'beethoven.ogg', 'vivaldi.ogg', 'barber.ogg', 'chopin.ogg', 'bach.mp3'];
+    images = ['mozart.jpg', 'beethoven.jpg', 'vivaldi.jpg', 'barber.jpg', 'chopin.jpg', 'bach.jpg'];
+    tracks = ['mozartCut.mp3', 'beethovenCut.mp3', 'vivaldiCut.mp3', 'barber.ogg', 'chopin.ogg', 'bachCut.mp3'];
     pos.set(-600, 0, -600);
     this.createCarousel('classical', pos, images, tracks);
 };
@@ -284,6 +350,13 @@ SoundApp.prototype.onKeyUp = function(event) {
     }
 };
 
+/*
+function loaded() {
+    alert("Everything loaded");
+}
+window.onload = loaded;
+*/
+
 //Only executed our code once the DOM is ready.
 $(document).ready(function() {
 
@@ -303,3 +376,4 @@ $(document).ready(function() {
     app.run();
 
 });
+

@@ -38,6 +38,8 @@ BaseApp.prototype.createRenderer = function() {
     //this.renderer.setSize(1024, 768);
     //this.renderer.shadowMapEnabled = true;
     this.renderer.setSize(window.innerWidth, window.innerHeight);
+    //this.renderer.setFaceCulling( THREE.CullFaceNone );
+    this.renderer.autoClear = false;
     document.body.appendChild( this.renderer.domElement );
 };
 
@@ -63,7 +65,7 @@ BaseApp.prototype.createCamera = function() {
     offsetWidth = this.container.offsetWidth;
     offsetHeight = this.container.offsetHeight;
     */
-    this.camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 1000 );
+    this.camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 10000 );
     this.camera.position.set( 0, 50, 150 );
 
     console.log('dom =', this.renderer.domElement);
