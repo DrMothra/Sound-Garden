@@ -181,9 +181,19 @@ SoundApp.prototype.update = function() {
 
     var pitch = this.controls.getObject();
     this.cameraCube.rotation.copy( this.controls.getObject().rotation );
+    this.cameraCube.rotation.order = 'YXZ';
+    this.camera.rotation.order = 'YXZ';
     this.cameraCube.rotation.x = pitch.children[0].rotation.x;
     //console.log('Pitch=', pitch.children[0].rotation);
     this.renderer.render(this.sceneCube, this.cameraCube);
+
+    //Video
+    if(this.video.readyState === this.video.HAVE_ENOUGH_DATA) {
+        this.videoImageContext.drawImage(this.video, 0, 0);
+        if(this.videoTexture) {
+            this.videoTexture.needsUpdate = true;
+        }
+    }
     BaseApp.prototype.update.call(this);
 };
 
@@ -220,7 +230,7 @@ SoundApp.prototype.createScene = function() {
         geometry.vertices[ i ].y = data[ i ] * 1.25;
     }
 
-    var texture = THREE.ImageUtils.loadTexture("images/sand_texture1013.jpg");
+    var texture = THREE.ImageUtils.loadTexture("images/grass.jpg");
     var material = new THREE.MeshPhongMaterial({map: texture});
 
     var mesh = new THREE.Mesh(geometry, material);
@@ -265,6 +275,36 @@ SoundApp.prototype.createScene = function() {
     tracks = ['mozartCut.mp3', 'beethovenCut.mp3', 'vivaldiCut.mp3', 'barber.ogg', 'chopin.ogg', 'bachCut.mp3'];
     pos.set(-600, 0, -600);
     this.createCarousel('classical', pos, images, tracks);
+
+    //Video
+    video = document.getElementById('myVideo');
+    var videoImage = document.createElement('canvas');
+    videoImage.width = 480;
+    videoImage.height = 360;
+    var videoImageContext = videoImage.getContext('2d');
+    //videoImageContext.fillStyle = '#000000';
+    //videoImageContext.fillRect(0, 0, videoImage.width, videoImage.height);
+
+    var videoTexture = new THREE.Texture(videoImage);
+    videoTexture.minFilter = THREE.LinearFilter;
+    videoTexture.magFilter = THREE.LinearFilter;
+
+    var movieMaterial = new THREE.MeshBasicMaterial( { map: videoTexture, overdraw: true, side:THREE.DoubleSide} );
+    var movieGeometry = new THREE.PlaneGeometry( 480, 360, 4, 4 );
+    var movieScreen = new THREE.Mesh( movieGeometry, movieMaterial );
+    movieScreen.position.set(0, 50, 0);
+    this.scene.add(movieScreen);
+    video.load();
+    video.play();
+    video.addEventListener('ended', function() {
+        console.log('Video ended, replaying');
+        video.currentTime = 0;
+        video.load();
+        video.play();
+    });
+    this.video = video;
+    this.videoImageContext = videoImageContext;
+    this.videoTexture = videoTexture;
 };
 
 SoundApp.prototype.createCarousel = function(name, pos, images, tracks) {
@@ -333,6 +373,7 @@ SoundApp.prototype.onKeyDown = function(event) {
             break;
         case 80:
             console.log("CamPos=", this.controls.getObject().position);
+            //var rot = this.controls.getDirection().v;
             break;
         case 90:
             this.animate = true;
