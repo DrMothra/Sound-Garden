@@ -2,6 +2,18 @@
  * Created by DrTone on 28/05/2014.
  */
 
+function getFileExt(filename) {
+    //Get extension and return
+    var fileExt = null;
+    var ext = filename.indexOf('.');
+    if(ext >= 0) {
+        var start = ext+1;
+        fileExt = filename.substr(start, filename.length-start);
+    }
+
+    return fileExt;
+}
+
 //Audio playback
 var Sound = function(source, pos, radius, volume) {
     var audio = document.createElement('audio');
@@ -13,16 +25,12 @@ var Sound = function(source, pos, radius, volume) {
     }, false);
 
     //Get file extension
-    var fileExt = null;
-    var ext = source.indexOf('.');
-    if(ext >= 0) {
-        var start = ext+1;
-        fileExt = source.substr(start, source.length-start);
-    }
+    var fileExt = getFileExt(source);
     if(!fileExt) {
-        alert("Couldn't load sound file!");
+        alert('Could not get file extn');
         return;
     }
+
     var audioType = 'audio/';
     switch (fileExt) {
         case 'mp3':
@@ -71,6 +79,61 @@ var Sound = function(source, pos, radius, volume) {
     };
 };
 
+var Video = function(source, pos, radius, volume) {
+    //Create requested video source
+    var video = document.createElement('video');
+    var src = document.createElement('source');
+
+    //Get file extension
+    var fileExt = getFileExt(source);
+    if(!fileExt) {
+        alert('Could not get file extn');
+        return;
+    }
+
+    var videoType = 'video/';
+    switch (fileExt) {
+        case 'mp4':
+            videoType += 'mp4';
+            break;
+        case 'wmv':
+            videoType += 'wmv';
+            break;
+        case 'webm':
+            videoType += 'webm';
+            break;
+    }
+
+    src.src = source;
+    src.type = videoType;
+    video.appendChild(src);
+
+    var videoPosition = new THREE.Vector3(pos.x, pos.y, pos.z);
+    var videoRadius = radius;
+    var videoVolume = volume;
+
+    return {
+        play: function() {
+            video.play();
+        },
+        pause: function() {
+            video.pause();
+        },
+        setVolume: function(volume) {
+            video.volume = volume;
+        },
+        getPosition: function() {
+            return videoPosition;
+        },
+        getRadius: function() {
+            return videoRadius;
+        },
+        getVolume: function() {
+            return videoVolume;
+        }
+    };
+};
+
 function getNearestTrack(pos, group) {
     //Traverse group and check all children
     var smallest = 1000000;
@@ -105,7 +168,8 @@ SoundApp.prototype.init = function(container) {
     this.animate = false;
     this.animating = false;
     this.totalDelta = 0;
-    this.carousels = [];
+    this.audioCarousels = [];
+    this.videoCarousels = [];
     this.carouselNum = -1;
     this.animationTime = 2;
     this.audioTrack = 0;
@@ -117,16 +181,16 @@ SoundApp.prototype.update = function() {
 
     //Play music when user nearby
     var camPos = this.controls.getObject().position;
-    for(var car=0; car<this.carousels.length; ++car) {
-        var dist = this.carousels[car].position.distanceTo(camPos);
-        var currentCarousel = this.carouselNum >= 0 ? this.carousels[this.carouselNum] : null;
+    for(var car=0; car<this.audioCarousels.length; ++car) {
+        var dist = this.audioCarousels[car].position.distanceTo(camPos);
+        var currentCarousel = this.carouselNum >= 0 ? this.audioCarousels[this.carouselNum] : null;
         var currentTrack = currentCarousel ? currentCarousel.audioObjects[currentCarousel.currentTrack] : null;
 
         if(dist <= this.audioRadius) {
-            var track = getNearestTrack(camPos, this.carousels[car]);
+            var track = getNearestTrack(camPos, this.audioCarousels[car]);
             if(car != this.carouselNum || track != currentCarousel.currentTrack) {
                 this.carouselNum = car;
-                currentCarousel = this.carousels[this.carouselNum];
+                currentCarousel = this.audioCarousels[this.carouselNum];
                 if(currentCarousel.currentTrack >= 0){
                     currentTrack = currentCarousel.audioObjects[currentCarousel.currentTrack];
                     currentTrack.pause();
@@ -149,7 +213,7 @@ SoundApp.prototype.update = function() {
             break;
         } else {
             if(this.carouselNum >= 0) {
-                currentCarousel = this.carousels[this.carouselNum];
+                currentCarousel = this.audioCarousels[this.carouselNum];
                 if(currentCarousel.currentTrack >= 0) {
                     currentTrack = currentCarousel.audioObjects[currentCarousel.currentTrack];
                     currentTrack.setVolume(0);
@@ -162,17 +226,17 @@ SoundApp.prototype.update = function() {
     if(this.animate && !this.animating) {
         this.animating = true;
         this.animate = false;
-        this.startRot = this.carousels[this.carouselNum].rotation.y;
+        this.startRot = this.audioCarousels[this.carouselNum].rotation.y;
     }
     if(this.animating) {
         //DEBUG
         //console.log("Delta =", delta);
-        this.carousels[this.carouselNum].rotation.y += (delta/this.animationTime) * this.rotInc;
+        this.audioCarousels[this.carouselNum].rotation.y += (delta/this.animationTime) * this.rotInc;
         this.totalDelta += delta;
         if(this.totalDelta >= this.animationTime) {
             this.animating = false;
             this.totalDelta = 0;
-            this.carousels[this.carouselNum].rotation.y = this.startRot + this.rotInc;
+            this.audioCarousels[this.carouselNum].rotation.y = this.startRot + this.rotInc;
         }
     }
 
@@ -263,51 +327,26 @@ SoundApp.prototype.createScene = function() {
     var skyMesh = new THREE.Mesh( new THREE.BoxGeometry( 1000, 1000, 1000 ), skyMaterial );
     this.sceneCube.add( skyMesh );
 
-    //Create audio carousels
+    //Create audio audioCarousels
     this.audioRadius = 300;
     //Rock carousel
     var images = ['soundgarden.jpg', 'alterbridge.jpg', 'blacksabbath.jpg', 'ledzeppelin.png', 'pearljam.jpg', 'foofighters.jpg'];
     var tracks = ['soundgardenCut.mp3', 'alterbridgeCut.mp3', 'blacksabbathCut.mp3', 'ledzeppelinCut.mp3', 'pearljamCut.mp3', 'foofightersCut.mp3'];
     var pos = new THREE.Vector3(600, 0, -600);
-    this.createCarousel('rock', pos, images, tracks);
+    this.createAudioCarousel('rock', pos, images, tracks);
 
     images = ['mozart.jpg', 'beethoven.jpg', 'vivaldi.jpg', 'barber.jpg', 'chopin.jpg', 'bach.jpg'];
     tracks = ['mozartCut.mp3', 'beethovenCut.mp3', 'vivaldiCut.mp3', 'barber.ogg', 'chopin.ogg', 'bachCut.mp3'];
     pos.set(-600, 0, -600);
-    this.createCarousel('classical', pos, images, tracks);
+    this.createAudioCarousel('classical', pos, images, tracks);
 
-    //Video
-    video = document.getElementById('myVideo');
-    var videoImage = document.createElement('canvas');
-    videoImage.width = 480;
-    videoImage.height = 360;
-    var videoImageContext = videoImage.getContext('2d');
-    //videoImageContext.fillStyle = '#000000';
-    //videoImageContext.fillRect(0, 0, videoImage.width, videoImage.height);
-
-    var videoTexture = new THREE.Texture(videoImage);
-    videoTexture.minFilter = THREE.LinearFilter;
-    videoTexture.magFilter = THREE.LinearFilter;
-
-    var movieMaterial = new THREE.MeshBasicMaterial( { map: videoTexture, overdraw: true, side:THREE.DoubleSide} );
-    var movieGeometry = new THREE.PlaneGeometry( 480, 360, 4, 4 );
-    var movieScreen = new THREE.Mesh( movieGeometry, movieMaterial );
-    movieScreen.position.set(0, 50, 0);
-    this.scene.add(movieScreen);
-    video.load();
-    video.play();
-    video.addEventListener('ended', function() {
-        console.log('Video ended, replaying');
-        video.currentTime = 0;
-        video.load();
-        video.play();
-    });
-    this.video = video;
-    this.videoImageContext = videoImageContext;
-    this.videoTexture = videoTexture;
+    //Create video audioCarousels
+    var videos = ['metgod.mp4', 'godzilla.mp4'];
+    pos.set(0, 0, -600);
+    this.createVideoCarousel('films', pos, videos);
 };
 
-SoundApp.prototype.createCarousel = function(name, pos, images, tracks) {
+SoundApp.prototype.createAudioCarousel = function(name, pos, images, tracks) {
     //Create group for carousel
     var group = new THREE.Object3D();
     group.name = name;
@@ -341,8 +380,58 @@ SoundApp.prototype.createCarousel = function(name, pos, images, tracks) {
     //audioObjects[0].setVolume(0);
     group.audioObjects = audioObjects;
     group.currentTrack = -1;
-    this.carousels.push(group);
+    this.audioCarousels.push(group);
     this.scene.add(group);
+};
+
+SoundApp.prototype.createVideoCarousel = function(name, pos, videos) {
+    //Create group for carousel
+    var group = new THREE.Object3D();
+    group.name = name;
+
+    //Create sprites for carousel
+    var spriteHeight = 100;
+    var frontX = 0, frontZ = 100, rightX = 100, rightZ = 0;
+    var spritePos = [frontX, frontZ, rightX, rightZ, frontX, -frontZ, -rightX, rightZ];
+    var scaleX = 100, scaleY = 100, scaleZ = 1;
+    for(var child= 0, posIndex=0; child<videos.length; ++child, posIndex+=2) {
+        //Create video texture
+        var videoImage = document.createElement('canvas');
+        videoImage.width = 480;
+        videoImage.height = 360;
+        var videoImageContext = videoImage.getContext('2d');
+        var videoTexture = new THREE.Texture(videoImage);
+        videoTexture.minFilter = THREE.LinearFilter;
+        videoTexture.magFilter = THREE.LinearFilter;
+
+        var spriteMaterial = new THREE.SpriteMaterial({
+                overdraw: true,
+                useScreenCoordinates: false,
+                map: videoTexture}
+        );
+        var sprite = new THREE.Sprite(spriteMaterial);
+        //Give sprite name
+        sprite.name = 'sprite'+ child;
+        sprite.scale.set(scaleX, scaleY, scaleZ);
+        sprite.position.set(spritePos[posIndex], spriteHeight, spritePos[posIndex+1]);
+        group.add(sprite);
+    }
+
+    group.position.set(pos.x, pos.y, pos.z);
+
+
+
+    video.load();
+    video.play();
+    video.addEventListener('ended', function() {
+        console.log('Video ended, replaying');
+        video.currentTime = 0;
+        video.load();
+        video.play();
+    });
+    this.video = video;
+    this.videoImageContext = videoImageContext;
+    this.videoTexture = videoTexture;
 };
 
 SoundApp.prototype.createGUI = function() {
