@@ -189,6 +189,8 @@ function SoundApp() {
 
 SoundApp.prototype = new BaseApp();
 
+var MEDIA_AUDIO= 0, MEDIA_VIDEO=1;
+
 SoundApp.prototype.init = function(container) {
     BaseApp.prototype.init.call(this, container);
     this.guiControls = null;
@@ -197,13 +199,12 @@ SoundApp.prototype.init = function(container) {
     this.animate = false;
     this.animating = false;
     this.totalDelta = 0;
-    this.audioCarousels = [];
-    this.videoCarousels = [];
-    this.audioCarouselNum = -1;
-    this.videoCarouselNum = -1;
+    this.carousels = [];
+    this.carouselNum = -1;
     this.animationTime = 2;
     this.audioTrack = 0;
     this.videoRadius = 300;
+    this.inRange = false;
 };
 
 SoundApp.prototype.update = function() {
@@ -211,6 +212,8 @@ SoundApp.prototype.update = function() {
     var delta = this.clock.getDelta();
 
     //Play music when user nearby
+    //Update everything
+    this.inRange = false;
     var camPos = this.controls.getObject().position;
     this.updateAudio(camPos, delta);
 
@@ -218,6 +221,33 @@ SoundApp.prototype.update = function() {
 
     //DEBUG
     //console.log("Volume =", this.audio.volume);
+
+    //Only animate carousel when nearby
+    if(this.animate && !this.animating) {
+        //DEBUG
+        console.log("Car =", this.carouselNum);
+
+        if(this.carouselNum >= 0) {
+            this.animating = true;
+            this.animate = false;
+            this.startRot = this.carousels[this.carouselNum].rotation.y;
+        } else {
+            this.animating = false;
+            this.animate = false;
+        }
+    }
+
+    if(this.animating) {
+        //DEBUG
+        //console.log("Delta =", delta);
+        this.carousels[this.carouselNum].rotation.y += (delta/this.animationTime) * this.rotInc;
+        this.totalDelta += delta;
+        if(this.totalDelta >= this.animationTime) {
+            this.animating = false;
+            this.totalDelta = 0;
+            this.carousels[this.carouselNum].rotation.y = this.startRot + this.rotInc;
+        }
+    }
 
     var pitch = this.controls.getObject();
     this.cameraCube.rotation.copy( this.controls.getObject().rotation );
@@ -232,16 +262,21 @@ SoundApp.prototype.update = function() {
 
 SoundApp.prototype.updateAudio = function(pos, delta) {
     //Update audio carousels
-    for(var car=0; car<this.audioCarousels.length; ++car) {
-        var dist = this.audioCarousels[car].position.distanceTo(pos);
-        var currentCarousel = this.audioCarouselNum >= 0 ? this.audioCarousels[this.audioCarouselNum] : null;
-        var currentTrack = currentCarousel ? currentCarousel.audioObjects[currentCarousel.currentTrack] : null;
+    for(var car=0; car<this.carousels.length; ++car) {
+        if(this.carousels[car].mediaType != MEDIA_AUDIO) continue;
+
+        var currentCarousel;
+        var currentTrack;
+        var dist = this.carousels[car].position.distanceTo(pos);
 
         if(dist <= this.audioRadius) {
-            var track = getNearest(pos, this.audioCarousels[car]);
-            if(car != this.audioCarouselNum || track != currentCarousel.currentTrack) {
-                this.audioCarouselNum = car;
-                currentCarousel = this.audioCarousels[this.audioCarouselNum];
+            this.inRange = true;
+            currentCarousel =  this.carouselNum >= 0 ? this.carousels[this.carouselNum] : null;
+            currentTrack = currentCarousel ? currentCarousel.audioObjects[currentCarousel.currentTrack] : null;
+            var track = getNearest(pos, this.carousels[car]);
+            if(car != this.carouselNum || track != currentCarousel.currentTrack) {
+                this.carouselNum = car;
+                currentCarousel = this.carousels[this.carouselNum];
                 if(currentCarousel.currentTrack >= 0){
                     currentTrack = currentCarousel.audioObjects[currentCarousel.currentTrack];
                     currentTrack.pause();
@@ -251,7 +286,7 @@ SoundApp.prototype.updateAudio = function(pos, delta) {
                 currentTrack.play();
 
                 //DEBUG
-                console.log('Track = ', track, ' car =', this.audioCarouselNum);
+                console.log('Track = ', track, ' car =', this.carouselNum);
             }
             if(currentTrack) {
                 var volume = currentTrack.getVolume() * (1-dist / currentTrack.getRadius());
@@ -263,8 +298,8 @@ SoundApp.prototype.updateAudio = function(pos, delta) {
             }
             break;
         } else {
-            if(this.audioCarouselNum >= 0) {
-                currentCarousel = this.audioCarousels[this.audioCarouselNum];
+            if(this.carouselNum >= 0) {
+                currentCarousel = this.carousels[this.carouselNum];
                 if(currentCarousel.currentTrack >= 0) {
                     currentTrack = currentCarousel.audioObjects[currentCarousel.currentTrack];
                     currentTrack.setVolume(0);
@@ -272,38 +307,29 @@ SoundApp.prototype.updateAudio = function(pos, delta) {
             }
         }
     }
-
-    //Only animate carousel when nearby
-    if(this.animate && !this.animating) {
-        this.animating = true;
-        this.animate = false;
-        this.startRot = this.audioCarousels[this.audioCarouselNum].rotation.y;
-    }
-    if(this.animating) {
-        //DEBUG
-        //console.log("Delta =", delta);
-        this.audioCarousels[this.audioCarouselNum].rotation.y += (delta/this.animationTime) * this.rotInc;
-        this.totalDelta += delta;
-        if(this.totalDelta >= this.animationTime) {
-            this.animating = false;
-            this.totalDelta = 0;
-            this.audioCarousels[this.audioCarouselNum].rotation.y = this.startRot + this.rotInc;
-        }
+    //See if near any carousel
+    if(!this.inRange) {
+        this.carouselNum = -1;
     }
 };
 
 SoundApp.prototype.updateVideo = function(pos, delta) {
     //Update video carousels
-    for(var vid=0; vid<this.videoCarousels.length; ++vid) {
-        var dist = this.videoCarousels[vid].position.distanceTo(pos);
-        var currentCarousel = this.videoCarouselNum >= 0 ? this.videoCarousels[this.videoCarouselNum] : null;
-        var currentVid = currentCarousel ? currentCarousel.videoObjects[currentCarousel.currentVid] : null;
+    for(var vid=0; vid<this.carousels.length; ++vid) {
+        if(this.carousels[vid].mediaType != MEDIA_VIDEO) continue;
+
+        var currentCarousel;
+        var currentVid;
+        var dist = this.carousels[vid].position.distanceTo(pos);
 
         if(dist <= this.videoRadius) {
-            var video = getNearest(pos, this.videoCarousels[vid]);
-            if(vid != this.videoCarouselNum || video != currentCarousel.currentVid) {
-                this.videoCarouselNum = vid;
-                currentCarousel = this.videoCarousels[this.videoCarouselNum];
+            this.inRange = true;
+            currentCarousel = this.carouselNum >= 0 ? this.carousels[this.carouselNum] : null;
+            currentVid = currentCarousel ? currentCarousel.videoObjects[currentCarousel.currentVid] : null;
+            var video = getNearest(pos, this.carousels[vid]);
+            if(vid != this.carouselNum || video != currentCarousel.currentVid) {
+                this.carouselNum = vid;
+                currentCarousel = this.carousels[this.carouselNum];
                 if(currentCarousel.currentVid >= 0) {
                     currentVid = currentCarousel.videoObjects[currentCarousel.currentVid];
                     currentVid.pause();
@@ -327,14 +353,18 @@ SoundApp.prototype.updateVideo = function(pos, delta) {
             }
             break;
         } else {
-            if(this.videoCarouselNum >= 0) {
-                currentCarousel = this.videoCarousels[this.videoCarouselNum];
+            if(this.carouselNum >= 0) {
+                currentCarousel = this.carousels[this.carouselNum];
                 if(currentCarousel.currentVid >= 0) {
                     currentVid = currentCarousel.videoObjects[currentCarousel.currentVid];
                     currentVid.volume = 0;
                 }
             }
         }
+    }
+    //See if near any carousel
+    if(!this.inRange) {
+        this.carouselNum = -1;
     }
 }
 SoundApp.prototype.generateTerrain = function() {
@@ -456,7 +486,8 @@ SoundApp.prototype.createAudioCarousel = function(name, pos, images, tracks) {
     //audioObjects[0].setVolume(0);
     group.audioObjects = audioObjects;
     group.currentTrack = -1;
-    this.audioCarousels.push(group);
+    group.mediaType = MEDIA_AUDIO;
+    this.carousels.push(group);
     this.scene.add(group);
 };
 
@@ -512,7 +543,8 @@ SoundApp.prototype.createVideoCarousel = function(name, pos, videos) {
 
     group.videoObjects = videoObjects;
     group.currentVid = -1;
-    this.videoCarousels.push(group);
+    group.mediaType = MEDIA_VIDEO;
+    this.carousels.push(group);
     this.scene.add(group);
 };
 
